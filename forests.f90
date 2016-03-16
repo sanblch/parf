@@ -37,7 +37,8 @@ CONTAINS
     class_attr = class%mapping
 
     CALL par_get_stripe(opts%num_trees, lower, upper)
-    ALLOCATE (rfptr, rfptr%trees(lower:upper), rfptr%dgini(attribute_count), &
+    ALLOCATE (rfptr)
+    ALLOCATE (rfptr%trees(lower:upper), rfptr%dgini(attribute_count), &
       & seeds(0:opts%num_trees))
     DO i = 0, opts%num_trees
       seeds(i) = rnd_integer()
@@ -352,9 +353,10 @@ CONTAINS
               i = i + 1
               CALL par_recv_int(l)
               thetree => trees(i)
+              ALLOCATE(thetree%oob, STAT=alloc_err)
               ALLOCATE (thetree%leaf_bounds(0:l), thetree%leaf_pop(l), &
                 & thetree%leaf_index(instance_count), &
-                & thetree%oob, thetree%oob%bits(oobsize), STAT=alloc_err)
+                & thetree%oob%bits(oobsize), STAT=alloc_err)
               CALL par_send_int(alloc_err, proc)
               IF (alloc_err.EQ.0) THEN
                 CALL par_recv_int_vector(leaf_id(:, i))
@@ -373,9 +375,10 @@ CONTAINS
           DO i = LBOUND(rfptr%trees, 1), UBOUND(rfptr%trees, 1)
             thetree => trees(i)
             l = UBOUND(rfptr%trees(i)%leaf_bounds, 1)
+            ALLOCATE (thetree%oob, STAT=alloc_err)
             ALLOCATE (thetree%leaf_bounds(0:l), thetree%leaf_pop(l), &
               & thetree%leaf_index(instance_count), &
-              & thetree%oob, thetree%oob%bits(oobsize), STAT=alloc_err)
+              & thetree%oob%bits(oobsize), STAT=alloc_err)
             IF (alloc_err.EQ.0) THEN
               leaf_id(:, i) = isptr%leaf_id(:, i)
               trees(i)%leaf_bounds = rfptr%trees(i)%leaf_bounds
@@ -710,9 +713,9 @@ CONTAINS
 
     datadesc => new_datadescription()
     CALL par_get_stripe(opts%num_trees, lower, upper)
+    ALLOCATE (rfptr)
     ALLOCATE (datadesc%attributes(attribute_count), &
-      & datadesc%categories(category_count), &
-      & rfptr, rfptr%trees(lower:upper), &
+      & datadesc%categories(category_count), rfptr%trees(lower:upper), &
       & trainset%estimated_class(instance_count), &
       & trainset%leaf_id(instance_count, lower:upper), &
       & datadesc%usedvars(used_count))

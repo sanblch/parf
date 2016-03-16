@@ -39,7 +39,8 @@ CONTAINS
     class_start = isptr%dd%attributes(opts%class_attribute_num)%cat_start
     class_catvar = isptr%dd%attributes(opts%class_attribute_num)%mapping
 
-    ALLOCATE (bs, bs%instances(instance_count), bs%classes(class_count), &
+    ALLOCATE (bs)
+    ALLOCATE (bs%instances(instance_count), bs%classes(class_count), &
       & bs%weight_sums_by_instance(instance_count), &
       & bs%weight_sums_by_class(class_count), weights(class_count))
     bs%instances = 0

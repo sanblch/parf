@@ -1,28 +1,29 @@
 ##### Configuration section
 
-### Choose a Fortran 90 compiler and options
-FC = /opt/intel_fc_80/bin/ifort
-FFLAGS = -g -pg -CB -traceback --static
-
 ### Choose a C compiler and options
 CC = cc
 CFLAGS = -Wall -g -pg --static
 
-### Choose parallelisation library, comment for no parallelisation
-PAR = mpi
-
+### Choose a Fortran 90 compiler and options
+FORT = gfortran
+ifeq (${FORT},gfortran)
+	FC = gfortran
+	FFLAGS = -fno-range-check -g -pg --static
+endif
+ifeq (${FORT},ifort)
+	FC = /opt/intel_fc_80/bin/ifort
+	FFLAGS = -g -pg -CB -traceback --static
+endif
 ### For MPI: the MPI Fortran compilation command
-MPIFC = mpif90
+ifeq (${FORT},mpif90)
+	FC = mpif90
+	FFLAGS = -fno-range-check -g -pg
+endif
 
 ##### End of configuration section
 # 
 # No changes should be necessary below this line
 # ---------------------------------------------------------------------
-
-PAR ?= none
-ifeq (${PAR},mpi)
-	FC = ${MPIFC}
-endif
 MODSOURCES=trees.f90 bitvectors.f90 instancesets.f90 options.f90 \
 	utilities.f90 bootstraps.f90 forests.f90 importances.f90 \
 	prototypes.f90 graphics.f90

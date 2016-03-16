@@ -276,16 +276,16 @@ CONTAINS
         CALL seed_rnd(4357) ! TODO seed with a random value
       END IF
       DO kk = 0, rnd_n - rnd_m - 1
-        y = IOR(IAND(rnd_mt(kk), rnd_umask), IAND(rnd_mt(kk + 1), rnd_lmask))
+        y = IOR(IAND(rnd_mt(kk), -2147483648), IAND(rnd_mt(kk + 1), rnd_lmask))
         rnd_mt(kk)=IEOR(IEOR(rnd_mt(kk + rnd_m), ISHFT(y, -1)), &
           & rnd_mag01(IAND(y, 1)))
       END DO
       DO kk = rnd_n - rnd_m, rnd_n - 2
-        y = IOR(IAND(rnd_mt(kk), rnd_umask), IAND(rnd_mt(kk + 1), rnd_lmask))
+        y = IOR(IAND(rnd_mt(kk), -2147483648), IAND(rnd_mt(kk + 1), rnd_lmask))
         rnd_mt(kk)=IEOR(IEOR(rnd_mt(kk + rnd_m - rnd_n), ISHFT(y, -1)), &
           & rnd_mag01(IAND(y, 1)))
       END DO
-      y = IOR(IAND(rnd_mt(rnd_n - 1), rnd_umask), IAND(rnd_mt(0), rnd_lmask))
+      y = IOR(IAND(rnd_mt(rnd_n - 1), -2147483648), IAND(rnd_mt(0), rnd_lmask))
       rnd_mt(rnd_n - 1)=IEOR(IEOR(rnd_mt(rnd_m - 1), ISHFT(y, -1)), &
         & rnd_mag01(IAND(y, 1)))
       rnd_mti = 0

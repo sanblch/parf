@@ -28,7 +28,8 @@ CONTAINS
     TYPE (bitvector), POINTER :: bvptr
     INTEGER :: newsize
     newsize = (vector_size + bits_per_integer - 1) / bits_per_integer
-    ALLOCATE (bvptr, bvptr%bits(newsize))
+    ALLOCATE (bvptr)
+    ALLOCATE (bvptr%bits(newsize))
     bvptr%bits = 0
     bvptr%width = 1
   END FUNCTION new_bitvector
@@ -38,14 +39,16 @@ CONTAINS
     TYPE (bitvector), POINTER :: bvptr
     INTEGER :: newsize
     newsize = (size1 * size2 + bits_per_integer - 1) / bits_per_integer
-    ALLOCATE (bvptr, bvptr%bits(newsize))
+    ALLOCATE (bvptr)
+    ALLOCATE (bvptr%bits(newsize))
     bvptr%bits = 0
     bvptr%width = size2
   END FUNCTION new_bitvector2
 
   FUNCTION clone_bitvector(oldbvptr) RESULT (bvptr)
     TYPE (bitvector), POINTER :: oldbvptr, bvptr
-    ALLOCATE (bvptr, bvptr%bits(UBOUND(oldbvptr%bits, 1)))
+    ALLOCATE (bvptr)
+    ALLOCATE (bvptr%bits(UBOUND(oldbvptr%bits, 1)))
     bvptr%width = oldbvptr%width
     bvptr%bits = oldbvptr%bits
   END FUNCTION clone_bitvector
