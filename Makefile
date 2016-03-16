@@ -3,6 +3,7 @@
 ### Choose a C compiler and options
 CC = cc
 CFLAGS = -Wall -g -pg --static
+PAR = none
 
 ### Choose a Fortran 90 compiler and options
 FORT = gfortran
@@ -14,10 +15,12 @@ ifeq (${FORT},ifort)
 	FC = /opt/intel_fc_80/bin/ifort
 	FFLAGS = -g -pg -CB -traceback --static
 endif
-### For MPI: the MPI Fortran compilation command
 ifeq (${FORT},mpif90)
 	FC = mpif90
 	FFLAGS = -fno-range-check -g -pg
+	CFLAGS = -Wall -g -pg
+### For MPI: the MPI Fortran compilation command
+    PAR = mpi
 endif
 
 ##### End of configuration section
