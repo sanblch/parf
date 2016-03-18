@@ -510,7 +510,7 @@ CONTAINS
         WRITE(handle, "((I12))") nodeptr%catvar_classes%bits
       ELSE
         ! Contvar
-        WRITE(handle, "(F10.4)") nodeptr%contvar_max
+        WRITE(handle, "(F15.4)") nodeptr%contvar_max
       END IF
       CALL save_tree_internal(nodeptr%yes, datadesc, handle)
       CALL save_tree_internal(nodeptr%no, datadesc, handle)

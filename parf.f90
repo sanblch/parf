@@ -10,14 +10,18 @@ MODULE parf
   LOGICAL :: last_pass
 END MODULE parf
 
-SUBROUTINE load_trainset(filename)
+SUBROUTINE start()
   USE parf
-  USE forests
   IMPLICIT NONE
-  CHARACTER(*) :: filename
   CALL par_init()
   CALL opts_default()
-  NULLIFY(trainset)
+  NULLIFY(testset, trainset, datadesc, rfptr)
+END SUBROUTINE start
+
+SUBROUTINE load_trainset(filename)
+  USE parf
+  IMPLICIT NONE
+  CHARACTER(*) :: filename
   opts%trainset = filename
   trainset => new_instanceset(trainset_type)
   IF(.NOT.parse_arff(trainset, opts%trainset)) CALL clean()
@@ -31,12 +35,32 @@ SUBROUTINE load_testset(filename)
   USE parf
   IMPLICIT NONE
   CHARACTER(*) :: filename
-  NULLIFY(testset)
   opts%testset = filename
   testset => new_instanceset(testset_type)
   testset%dd => datadesc
   IF(.NOT.parse_arff(testset, opts%testset)) CALL clean()
 END SUBROUTINE load_testset
+
+SUBROUTINE load_trees(filename)
+  USE parf
+  IMPLICIT NONE
+  CHARACTER(*) :: filename
+  CALL free_instanceset(trainset)
+  CALL free_datadescription(datadesc)
+  CALL free_forest(rfptr)
+  NULLIFY(trainset, datadesc, rfptr)    
+  trainset => new_instanceset(trainset_type)
+  opts%load_forest = filename
+  CALL load_forest(rfptr, datadesc)
+END SUBROUTINE load_trees
+
+SUBROUTINE save_trees(filename)
+  USE parf
+  IMPLICIT NONE
+  CHARACTER(*) :: filename
+  opts%save_forest = filename
+  CALL save_forest(rfptr)
+END SUBROUTINE save_trees
 
 SUBROUTINE calculate()
   USE parf
@@ -89,9 +113,28 @@ SUBROUTINE calculate()
       EXIT
     END IF
   END DO
+END SUBROUTINE calculate
+
+SUBROUTINE predict()
+  USE parf
+  IMPLICIT NONE
+  IF (LEN_TRIM(opts%load_forest).GT.0) THEN
+    trainset%classes => trainset%estimated_class
+    CALL fix_num_prox(UBOUND(trainset%estimated_class, 1))
+    IF (LEN_TRIM(opts%testset).GT.0) THEN
+      CALL classify_instanceset(testset, rfptr)
+      testset%classes => testset%estimated_class
+    END IF  
+    IF (opts%last_prox_required) THEN
+      CALL calculate_proximities(rfptr, trainset)
+      IF (opts%calc_test_prox) THEN
+        CALL calculate_proximities(rfptr, testset)
+      END IF
+    END IF
+  ENDIF
   opts%test_confusion = "acm"
   CALL process_confusion_matrix(testset, opts%test_confusion)
-END SUBROUTINE calculate
+END SUBROUTINE predict
 
 SUBROUTINE opts_default()
   USE options  
@@ -157,7 +200,7 @@ END SUBROUTINE opts_default
 SUBROUTINE clean()
   USE parf
   IMPLICIT NONE
-      CALL free_forest(rfptr)
+  CALL free_forest(rfptr)
   CALL free_instanceset(trainset)
   CALL free_instanceset(testset)
   CALL free_datadescription(datadesc)

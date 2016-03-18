@@ -40,5 +40,6 @@ if(PARF_TYPE STREQUAL "EXEC")
    add_executable(parf "main.f90" ${FSOURCES} ${CSOURCES} "parallel/${PAR}.f90")
 elseif(PARF_TYPE STREQUAL "LIB")
    add_library(parf "parf.h" "parf.f90" ${FSOURCES} ${CSOURCES} "parallel/${PAR}.f90")
+   add_subdirectory(examples)
 endif()
-add_subdirectory(examples)
+
