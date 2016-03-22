@@ -3,11 +3,100 @@ MODULE parf
   USE instancesets
   USE forests
   USE parallel
+  USE bitvectors
+  USE utilities
   IMPLICIT NONE
   TYPE (datadescription), POINTER :: datadesc
   TYPE (forest), POINTER :: rfptr
   INTEGER :: fill_pass
   LOGICAL :: last_pass
+CONTAINS
+  FUNCTION parse(isptr, data, size, var)
+    TYPE (instanceset), POINTER :: isptr
+    INTEGER :: size, var
+    DOUBLE PRECISION, DIMENSION(size) :: data
+    LOGICAL :: parse
+    CHARACTER(LEN=linelen) :: origline, line
+    INTEGER :: line_no, attribute_count, cat_count, instance_count, cat_start
+    INTEGER :: contvar_count, catvar_count, ignorevar_count
+    INTEGER :: pos, pos2, pass, i, attr, attr2, j
+    CHARACTER(LEN=tokenlen) :: cat_name
+    CHARACTER :: delimiter
+    LOGICAL :: statement_attribute, statement_ignored
+    LOGICAL :: eof, err
+    INTEGER :: parse_line_result, constant_attrs
+    LOGICAL :: loaddd ! load data description
+    INTEGER :: skip_attr
+    LOGICAL, ALLOCATABLE :: usedvars(:)
+
+    parse = .FALSE.
+    loaddd = .NOT.ASSOCIATED(isptr%dd)
+      attribute_count = var
+      contvar_count = var - 1
+      catvar_count = 1
+      ignorevar_count = 0
+      cat_count = 2
+      
+      instance_count = size / var    
+      isptr%dd => new_datadescription()
+      isptr%relation_name = "harddrive"
+      isptr%dd%contvar_count = contvar_count
+      isptr%dd%catvar_count = catvar_count
+      opts%class_attribute_num = attribute_count
+      ALLOCATE (isptr%dd%attributes(attribute_count),&
+        & isptr%dd%categories(cat_count),&
+        & usedvars(attribute_count), isptr%missing_count(attribute_count))
+      isptr%constant_attr => new_bitvector(attribute_count)
+      usedvars = opts%used_default
+      usedvars(opts%class_attribute_num) = .FALSE.
+      isptr%missing_count = 0
+      skip_attr = attribute_count + 1 ! i.e. don't skip.
+      IF (opts%split_node_size.LT.0) THEN
+        opts%split_node_size = -opts%split_node_size * instance_count / 100
+      END IF
+      IF (opts%split_node_size.GT.instance_count) THEN
+        opts%split_node_size = instance_count
+      END IF
+      isptr%missing_data => new_bitvector2(instance_count, &
+        & attribute_count)
+      ALLOCATE (isptr%contvars(instance_count, contvar_count),&
+        & isptr%catvars(instance_count, catvar_count),&
+        & isptr%ignorevars(instance_count, ignorevar_count),&
+        & isptr%dd%usedconts(attribute_count - 1),&
+        & isptr%dd%usedvars(attribute_count - 1))
+      DO i = 1, attribute_count
+        IF (i.EQ.attribute_count) THEN                       
+          write(cat_name,'(A5)') "failure"
+          isptr%dd%attributes(i)%name = cat_name
+          isptr%dd%attributes(i)%cat_start = 1
+          isptr%dd%attributes(i)%cat_count = 2
+          isptr%dd%attributes(i)%mapping = 1
+        ELSE
+          write(cat_name,'(A6 I2)') "double", i
+          isptr%dd%attributes(i)%name = cat_name
+          isptr%dd%attributes(i)%cat_start = 0
+          isptr%dd%attributes(i)%cat_count = 1
+          isptr%dd%attributes(i)%mapping = i
+          isptr%dd%usedvars(i) = i
+          isptr%dd%usedconts(i) = i
+        END IF
+      END DO
+      DO i = 1, cat_count
+        write(isptr%dd%categories(i)%name, '(I1)') i - 1
+	    isptr%dd%categories(i)%attribute = attribute_count
+	    isptr%dd%categories(i)%weight = 1
+	  END DO
+	  DO i = 1, instance_count
+	    isptr%catvars(i, 1) = &
+	      & data(i * attribute_count) + 1
+	    DO j = 1, contvar_count
+	      isptr%contvars(i, j) = &
+	      & data((i - 1) * attribute_count + j)
+	    END DO
+	  END DO
+    CALL index_usedconts(isptr%dd)
+    parse = .TRUE.
+  END FUNCTION parse
 END MODULE parf
 
 SUBROUTINE start()
@@ -17,6 +106,31 @@ SUBROUTINE start()
   CALL opts_default()
   NULLIFY(testset, trainset, datadesc, rfptr)
 END SUBROUTINE start
+
+SUBROUTINE load_train_data(data, size, var)
+  USE parf
+  IMPLICIT NONE
+  INTEGER :: size, var
+  DOUBLE PRECISION, DIMENSION(size) :: data
+  opts%trainset = "trainset"
+  trainset => new_instanceset(trainset_type)
+  IF(.NOT.parse(trainset, data, size, var)) CALL clean()
+  CALL fix_num_prox(UBOUND(trainset%catvars, 1))
+  datadesc => trainset%dd
+  trainset%classes => trainset%catvars(:, &
+    & datadesc%attributes(opts%class_attribute_num)%mapping)
+END SUBROUTINE load_train_data
+
+SUBROUTINE load_test_data(data, size, var)
+  USE parf
+  IMPLICIT NONE
+  INTEGER :: size, var
+  DOUBLE PRECISION, DIMENSION(size) :: data
+  opts%testset = "testset"
+  testset => new_instanceset(testset_type)
+  testset%dd => datadesc
+  IF(.NOT.parse(testset, data, size, var)) CALL clean()
+END SUBROUTINE load_test_data
 
 SUBROUTINE load_trainset(filename)
   USE parf
@@ -84,7 +198,6 @@ SUBROUTINE calculate()
       last_pass = fill_pass.GE.opts%fill_passes &
         & .AND.opts%redo_with_important_vars.EQ.0 &
         & .AND.opts%redo_with_significant_vars.EQ.0
-
       IF (last_pass) THEN
         CALL calc_training_error(trainset)
         IF (LEN_TRIM(opts%testset).NE.0) THEN
